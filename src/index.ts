@@ -1,21 +1,28 @@
-import express, { type NextFunction, type Request, type Response } from "express";
+import cors from "cors";
+import express from "express";
+import subjectRouter from "./routes/subject.js";
 
 const app = express();
-const PORT = 8000;
+const PORT = Number(process.env.PORT ?? 8000);
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+
+app.use(
+    cors({
+        origin: FRONTEND_URL,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        credentials: true,
+    })
+);
 
 app.use(express.json());
 
-app.use((req: Request, _res: Response, next: NextFunction) => {
-  console.log(`${req.method} ${req.url}`);
-  next();
+app.get("/", (req, res) => {
+    res.send("Backend server is running!");
 });
 
-app.get("/", (_req: Request, res: Response) => {
-  res.status(200).json({
-    message: "Classroom backend is running.",
-  });
-});
+app.use("/api/subjects", subjectRouter);
+app.use("/subjects", subjectRouter);
 
 app.listen(PORT, () => {
-  console.log(`Server started at http://localhost:${PORT}`);
+    console.log(`Server running at http://localhost:${PORT}`);
 });
