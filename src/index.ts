@@ -4,7 +4,7 @@ import departmentRouter from "./routes/department.js";
 import enrollmentRouter from "./routes/enrollment.js";
 import classRouter from "./routes/class.js";
 import subjectRouter from "./routes/subject.js";
-import userRouter from "./routes/user.js";
+import usersRouter from "./routes/users.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 8000);
@@ -36,13 +36,13 @@ app.get("/", (req, res) => {
 app.use("/api/departments", departmentRouter);
 app.use("/api/subjects", subjectRouter);
 app.use("/api/classes", classRouter);
-app.use("/api/users", userRouter);
+app.use("/api/users", usersRouter);
 app.use("/api/enrollments", enrollmentRouter);
 
 app.use("/departments", departmentRouter);
 app.use("/subjects", subjectRouter);
 app.use("/classes", classRouter);
-app.use("/users", userRouter);
+app.use("/users", usersRouter);
 app.use("/enrollments", enrollmentRouter);
 
 app.use((_req, res) => {

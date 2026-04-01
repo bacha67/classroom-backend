@@ -17,6 +17,9 @@ const parseSchedules = (value: unknown) => {
     return value;
 };
 
+const generateInviteCode = () =>
+    `CLS-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+
 const parseClassStatus = (value: unknown): ClassStatus | null => {
     if (value === "active" || value === "inactive" || value === "archived") {
         return value;
@@ -99,18 +102,18 @@ router.post("/", async (req, res) => {
     try {
         const subjectId = parseNumericId(req.body.subjectId);
         const teacherId = toTrimmedString(req.body.teacherId);
-        const inviteCode = toTrimmedString(req.body.inviteCode);
+        const inviteCode = toTrimmedString(req.body.inviteCode) ?? generateInviteCode();
         const name = toTrimmedString(req.body.name);
         const description = toOptionalTrimmedString(req.body.description);
         const bannerUrl = toOptionalTrimmedString(req.body.bannerUrl);
         const bannerCldPubId = toOptionalTrimmedString(req.body.bannerCldPubId);
-        const schedules = parseSchedules(req.body.schedules);
+        const schedules = parseSchedules(req.body.schedules) ?? [];
         const status = parseClassStatus(req.body.status) ?? "active";
         const capacity = Number(req.body.capacity ?? 50);
 
-        if (!subjectId || !teacherId || !inviteCode || !name || !schedules) {
+        if (!subjectId || !teacherId || !name) {
             return res.status(400).json({
-                error: "subjectId, teacherId, inviteCode, name, and schedules are required",
+                error: "subjectId, teacherId, and name are required",
             });
         }
 
@@ -293,13 +296,13 @@ router.put("/:id", async (req, res) => {
         const description = toOptionalTrimmedString(req.body.description);
         const bannerUrl = toOptionalTrimmedString(req.body.bannerUrl);
         const bannerCldPubId = toOptionalTrimmedString(req.body.bannerCldPubId);
-        const schedules = parseSchedules(req.body.schedules);
+        const schedules = parseSchedules(req.body.schedules) ?? [];
         const status = parseClassStatus(req.body.status);
         const capacity = Number(req.body.capacity);
 
-        if (!subjectId || !teacherId || !inviteCode || !name || !schedules || !status) {
+        if (!subjectId || !teacherId || !inviteCode || !name || !status) {
             return res.status(400).json({
-                error: "subjectId, teacherId, inviteCode, name, status, and schedules are required",
+                error: "subjectId, teacherId, inviteCode, name, and status are required",
             });
         }
 
