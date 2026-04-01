@@ -1,6 +1,7 @@
 import AgentAPI  from "apminsight";
 AgentAPI.config()
 import cors from "cors";
+
 import express from "express";
 import departmentRouter from "./routes/department.js";
 import enrollmentRouter from "./routes/enrollment.js";
