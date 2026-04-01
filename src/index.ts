@@ -48,6 +48,6 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
     res.status(500).json({ error: "Internal server error" });
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on 0.0.0.0:${PORT}`);
 });
