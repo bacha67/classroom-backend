@@ -1,7 +1,4 @@
-import AgentAPI  from "apminsight";
-AgentAPI.config()
 import cors from "cors";
-
 import express from "express";
 import departmentRouter from "./routes/department.js";
 import enrollmentRouter from "./routes/enrollment.js";
@@ -12,6 +9,15 @@ import userRouter from "./routes/user.js";
 const app = express();
 const PORT = Number(process.env.PORT ?? 8000);
 const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+
+void import("apminsight")
+    .then(({ default: AgentAPI }) => {
+        AgentAPI.config();
+        console.log("APM initialized");
+    })
+    .catch((error) => {
+        console.warn("APM initialization skipped:", error);
+    });
 
 app.use(
     cors({
@@ -47,6 +53,8 @@ app.use((error: unknown, _req: express.Request, res: express.Response, _next: ex
     console.error("Unhandled error:", error);
     res.status(500).json({ error: "Internal server error" });
 });
+
+console.log(`Preparing to listen on 0.0.0.0:${PORT}`);
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on 0.0.0.0:${PORT}`);
