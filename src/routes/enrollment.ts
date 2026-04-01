@@ -3,9 +3,11 @@ import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, enrollments, subjects, user } from "../db/schema/index.js";
+import { requireRole } from "../middleware/auth.js";
 import { parseNumericId, parsePagination, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
+const requireTeacherOrAdmin = requireRole("teacher", "admin");
 
 const getClassEnrollmentCount = async (classId: number) => {
     const [result] = await db
@@ -79,7 +81,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireTeacherOrAdmin, async (req, res) => {
     try {
         const studentId = toTrimmedString(req.body.studentId);
         const classId = parseNumericId(req.body.classId);
@@ -174,7 +176,7 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireTeacherOrAdmin, async (req, res) => {
     try {
         const enrollmentId = parseNumericId(req.params.id);
         const studentId = toTrimmedString(req.body.studentId);
@@ -251,7 +253,7 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireTeacherOrAdmin, async (req, res) => {
     try {
         const enrollmentId = parseNumericId(req.params.id);
 

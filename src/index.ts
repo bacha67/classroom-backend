@@ -1,47 +1,58 @@
-import('apminsight')
-    .then(({ default: AgentAPI }) => AgentAPI.config())
-    .catch(() => console.log('APM not available in this environment'));
-
 import cors from "cors";
 import express from "express";
+import classRouter from "./routes/class.js";
+import departmentRouter from "./routes/department.js";
+import enrollmentRouter from "./routes/enrollment.js";
+import subjectRouter from "./routes/subject.js";
+import userRouter from "./routes/user.js";
+import { attachCurrentUser, requireAuth } from "./middleware/auth.js";
+import securityMiddleware from "./middleware/security.js";
+import { auth } from "./lib/auth.js";
 import { toNodeHandler } from "better-auth/node";
 
-import subjectsRouter from "./routes/subjects.js";
-import usersRouter from "./routes/users.js";
-import classesRouter from "./routes/classes.js";
-import departmentsRouter from "./routes/departments.js";
-import statsRouter from "./routes/stats.js";
-import enrollmentsRouter from "./routes/enrollments.js";
-
-// import securityMiddleware from "./middleware/security.js";
-import { auth } from "./lib/auth.js";
-
 const app = express();
-const PORT = 8000;
+const PORT = Number(process.env.PORT ?? 8000);
+const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+const TRUST_PROXY = process.env.TRUST_PROXY === "true";
+
+if (TRUST_PROXY) {
+    app.set("trust proxy", 1);
+}
 
 app.use(
     cors({
-        origin: process.env.FRONTEND_URL, // React app URL
-        methods: ["GET", "POST", "PUT", "DELETE"], // Specify allowed HTTP methods
-        credentials: true, // allow cookies
+        origin: FRONTEND_URL,
+        methods: ["GET", "POST", "PUT", "DELETE"],
+        credentials: true,
     })
 );
+app.all('/api/auth/*splat', toNodeHandler(auth));
 
-app.all("/api/auth/*splat", toNodeHandler(auth));
+app.use(express.json({ limit: "100kb" }));
+app.use(attachCurrentUser);
+app.use(securityMiddleware);
 
-app.use(express.json());
+app.get("/api/auth/me", requireAuth, (req, res) => {
+    res.status(200).json({ data: req.user });
+});
 
-// app.use(securityMiddleware);
-
-app.use("/api/subjects", subjectsRouter);
-app.use("/api/users", usersRouter);
-app.use("/api/classes", classesRouter);
-app.use("/api/departments", departmentsRouter);
-app.use("/api/stats", statsRouter);
-app.use("/api/enrollments", enrollmentsRouter);
+app.use("/api/departments", requireAuth, departmentRouter);
+app.use("/api/subjects", requireAuth, subjectRouter);
+app.use("/api/classes", requireAuth, classRouter);
+app.use("/api/users", requireAuth, userRouter);
+app.use("/api/enrollments", requireAuth, enrollmentRouter);
 
 app.get("/", (req, res) => {
     res.send("Backend server is running!");
+});
+
+app.use((_req, res) => {
+    res.status(404).json({ error: "Route not found" });
+});
+
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error("Unhandled error:", error);
+    res.status(500).json({ error: "Internal server error" });
 });
 
 app.listen(PORT, () => {

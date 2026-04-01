@@ -3,9 +3,11 @@ import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, enrollments, subjects, user } from "../db/schema/index.js";
+import { requireRole } from "../middleware/auth.js";
 import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
+const requireTeacherOrAdmin = requireRole("teacher", "admin");
 
 type ClassStatus = "active" | "inactive" | "archived";
 
@@ -95,7 +97,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireTeacherOrAdmin, async (req, res) => {
     try {
         const subjectId = parseNumericId(req.body.subjectId);
         const teacherId = toTrimmedString(req.body.teacherId);
@@ -278,7 +280,7 @@ router.get("/:id/students", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireTeacherOrAdmin, async (req, res) => {
     try {
         const classId = parseNumericId(req.params.id);
 
@@ -371,7 +373,7 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireTeacherOrAdmin, async (req, res) => {
     try {
         const classId = parseNumericId(req.params.id);
 

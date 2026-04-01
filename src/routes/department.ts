@@ -3,9 +3,11 @@ import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, departments, subjects } from "../db/schema/index.js";
+import { requireRole } from "../middleware/auth.js";
 import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
+const requireAdmin = requireRole("admin");
 
 router.get("/", async (req, res) => {
     try {
@@ -44,7 +46,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
     try {
         const code = toTrimmedString(req.body.code);
         const name = toTrimmedString(req.body.name);
@@ -164,7 +166,7 @@ router.get("/:id/subjects", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdmin, async (req, res) => {
     try {
         const departmentId = parseNumericId(req.params.id);
 
@@ -211,7 +213,7 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
     try {
         const departmentId = parseNumericId(req.params.id);
 

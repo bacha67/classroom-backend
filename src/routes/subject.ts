@@ -3,9 +3,11 @@ import { eq, ilike, or, and, desc, sql, getTableColumns } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, departments, enrollments, subjects, user } from "../db/schema/index.js";
+import { requireRole } from "../middleware/auth.js";
 import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
+const requireAdmin = requireRole("admin");
 
 // Get all subjects with optional search, department filter, and pagination
 router.get("/", async (req, res) => {
@@ -73,7 +75,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
     try {
         const departmentId = parseNumericId(req.body.departmentId);
         const name = toTrimmedString(req.body.name);
@@ -157,7 +159,7 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdmin, async (req, res) => {
     try {
         const subjectId = parseNumericId(req.params.id);
         const departmentId = parseNumericId(req.body.departmentId);
@@ -213,7 +215,7 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
     try {
         const subjectId = parseNumericId(req.params.id);
 

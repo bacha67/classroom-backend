@@ -2,7 +2,13 @@ declare global {
     namespace Express {
         interface Request {
             user?: {
-                role?: "admin" | "teacher" | "student";
+                id: string;
+                name: string;
+                email: string;
+                role: "admin" | "teacher" | "student";
+                sessionId: string;
+                sessionToken: string;
+                sessionExpiresAt: Date;
             };
         }
     }

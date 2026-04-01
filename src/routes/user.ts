@@ -3,9 +3,11 @@ import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, enrollments, user } from "../db/schema/index.js";
+import { requireRole } from "../middleware/auth.js";
 import { parsePagination, toBoolean, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
+const requireAdmin = requireRole("admin");
 
 type UserRole = "student" | "teacher" | "admin";
 
@@ -17,7 +19,7 @@ const parseUserRole = (value: unknown): UserRole | null => {
     return null;
 };
 
-router.get("/", async (req, res) => {
+router.get("/", requireAdmin, async (req, res) => {
     try {
         const { currentPage, limitPerPage, offset } = parsePagination(req);
         const search = toTrimmedString(req.query.search);
@@ -65,7 +67,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireAdmin, async (req, res) => {
     try {
         const id = toTrimmedString(req.body.id);
         const name = toTrimmedString(req.body.name);
@@ -108,7 +110,7 @@ router.post("/", async (req, res) => {
     }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", requireAdmin, async (req, res) => {
     try {
         const userId = toTrimmedString(req.params.id);
 
@@ -150,7 +152,7 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireAdmin, async (req, res) => {
     try {
         const userId = toTrimmedString(req.params.id);
 
@@ -198,7 +200,7 @@ router.put("/:id", async (req, res) => {
     }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
     try {
         const userId = toTrimmedString(req.params.id);
 
