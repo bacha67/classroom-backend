@@ -2,7 +2,7 @@ import express from "express";
 import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
-import { classes, enrollments, user } from "../db/schema/index.js";
+import { classes, departments, enrollments, subjects, user } from "../db/schema/index.js";
 import { parsePagination, toBoolean, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
@@ -147,6 +147,140 @@ router.get("/:id", async (req, res) => {
     } catch (error) {
         console.error("GET /users/:id error:", error);
         res.status(500).json({ error: "Failed to fetch user details" });
+    }
+});
+
+router.get("/:id/subjects", async (req, res) => {
+    try {
+        const userId = toTrimmedString(req.params.id);
+
+        if (!userId) {
+            return res.status(400).json({ error: "Invalid user id" });
+        }
+
+        const { currentPage, limitPerPage, offset } = parsePagination(req);
+
+        const [userRecord] = await db
+            .select({ id: user.id, role: user.role })
+            .from(user)
+            .where(eq(user.id, userId));
+
+        if (!userRecord) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (userRecord.role !== "teacher" && userRecord.role !== "admin") {
+            return res.status(200).json({
+                data: [],
+                pagination: {
+                    page: currentPage,
+                    limit: limitPerPage,
+                    total: 0,
+                    totalPages: 0,
+                },
+            });
+        }
+
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(classes)
+            .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .where(eq(classes.teacherId, userId));
+
+        const data = await db
+            .select({
+                ...getTableColumns(subjects),
+                department: {
+                    id: departments.id,
+                    name: departments.name,
+                    code: departments.code,
+                },
+            })
+            .from(classes)
+            .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .leftJoin(departments, eq(subjects.departmentId, departments.id))
+            .where(eq(classes.teacherId, userId))
+            .orderBy(desc(subjects.createdAt))
+            .limit(limitPerPage)
+            .offset(offset);
+
+        res.status(200).json({
+            data,
+            pagination: {
+                page: currentPage,
+                limit: limitPerPage,
+                total: countResult[0]?.count ?? 0,
+                totalPages: Math.ceil((countResult[0]?.count ?? 0) / limitPerPage),
+            },
+        });
+    } catch (error) {
+        console.error("GET /users/:id/subjects error:", error);
+        res.status(500).json({ error: "Failed to fetch user subjects" });
+    }
+});
+
+router.get("/:id/departments", async (req, res) => {
+    try {
+        const userId = toTrimmedString(req.params.id);
+
+        if (!userId) {
+            return res.status(400).json({ error: "Invalid user id" });
+        }
+
+        const { currentPage, limitPerPage, offset } = parsePagination(req);
+
+        const [userRecord] = await db
+            .select({ id: user.id, role: user.role })
+            .from(user)
+            .where(eq(user.id, userId));
+
+        if (!userRecord) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        if (userRecord.role !== "teacher" && userRecord.role !== "admin") {
+            return res.status(200).json({
+                data: [],
+                pagination: {
+                    page: currentPage,
+                    limit: limitPerPage,
+                    total: 0,
+                    totalPages: 0,
+                },
+            });
+        }
+
+        const countResult = await db
+            .select({ count: sql<number>`count(distinct ${departments.id})` })
+            .from(classes)
+            .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .leftJoin(departments, eq(subjects.departmentId, departments.id))
+            .where(eq(classes.teacherId, userId));
+
+        const data = await db
+            .selectDistinct({
+                ...getTableColumns(departments),
+            })
+            .from(classes)
+            .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .leftJoin(departments, eq(subjects.departmentId, departments.id))
+            .where(eq(classes.teacherId, userId))
+            .orderBy(desc(departments.createdAt))
+            .limit(limitPerPage)
+            .offset(offset);
+
+        res.status(200).json({
+            data,
+            pagination: {
+                page: currentPage,
+                limit: limitPerPage,
+                total: countResult[0]?.count ?? 0,
+                totalPages: Math.ceil((countResult[0]?.count ?? 0) / limitPerPage),
+            },
+        });
+    } catch (error) {
+        console.error("GET /users/:id/departments error:", error);
+        res.status(500).json({ error: "Failed to fetch user departments" });
     }
 });
 
