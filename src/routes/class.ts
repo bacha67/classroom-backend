@@ -3,7 +3,7 @@ import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, enrollments, subjects, user } from "../db/schema/index.js";
-import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
+import { parseNumericId, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
 
@@ -30,30 +30,29 @@ const parseClassStatus = (value: unknown): ClassStatus | null => {
 
 router.get("/", async (req, res) => {
     try {
-        const { currentPage, limitPerPage, offset } = parsePagination(req);
-        const search = toTrimmedString(req.query.search);
-        const subjectId = parseNumericId(req.query.subjectId);
-        const teacherId = toTrimmedString(req.query.teacherId);
-        const status = parseClassStatus(req.query.status);
+        const { search, subject, teacher, page = 1, limit = 10 } = req.query;
+
+        const currentPage = Math.max(1, +page);
+        const limitPerPage = Math.max(1, +limit);
+        const offset = (currentPage - 1) * limitPerPage;
 
         const filterConditions = [];
 
         if (search) {
             filterConditions.push(
-                or(ilike(classes.name, `%${search}%`), ilike(classes.inviteCode, `%${search}%`))
+                or(
+                    ilike(classes.name, `%${search}%`),
+                    ilike(classes.inviteCode, `%${search}%`)
+                )
             );
         }
 
-        if (subjectId) {
-            filterConditions.push(eq(classes.subjectId, subjectId));
+        if (subject) {
+            filterConditions.push(ilike(subjects.name, `%${subject}%`));
         }
 
-        if (teacherId) {
-            filterConditions.push(eq(classes.teacherId, teacherId));
-        }
-
-        if (status) {
-            filterConditions.push(eq(classes.status, status));
+        if (teacher) {
+            filterConditions.push(ilike(user.name, `%${teacher}%`));
         }
 
         const whereClause = filterConditions.length > 0 ? and(...filterConditions) : undefined;
@@ -61,19 +60,17 @@ router.get("/", async (req, res) => {
         const countResult = await db
             .select({ count: sql<number>`count(*)` })
             .from(classes)
+            .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .leftJoin(user, eq(classes.teacherId, user.id))
             .where(whereClause);
 
-        const data = await db
+        const totalCount = countResult[0]?.count ?? 0;
+
+        const classesList = await db
             .select({
                 ...getTableColumns(classes),
                 subject: { ...getTableColumns(subjects) },
-                teacher: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    image: user.image,
-                },
+                teacher: { ...getTableColumns(user) },
             })
             .from(classes)
             .leftJoin(subjects, eq(classes.subjectId, subjects.id))
@@ -84,12 +81,12 @@ router.get("/", async (req, res) => {
             .offset(offset);
 
         res.status(200).json({
-            data,
+            data: classesList,
             pagination: {
                 page: currentPage,
                 limit: limitPerPage,
-                total: countResult[0]?.count ?? 0,
-                totalPages: Math.ceil((countResult[0]?.count ?? 0) / limitPerPage),
+                total: totalCount,
+                totalPages: Math.ceil(totalCount / limitPerPage),
             },
         });
     } catch (error) {
