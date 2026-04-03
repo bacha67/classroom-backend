@@ -8,7 +8,28 @@ import usersRouter from "./routes/users.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 8000);
-const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:5173";
+const DEFAULT_FRONTEND_URLS = ["http://localhost:5173", "http://localhost:3000"];
+const FRONTEND_URLS = [
+    process.env.FRONTEND_URL,
+    ...(process.env.FRONTEND_URLS?.split(",") ?? []),
+    ...DEFAULT_FRONTEND_URLS,
+]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+const isAllowedOrigin = (origin: string) => {
+    if (FRONTEND_URLS.includes(origin)) {
+        return true;
+    }
+
+    try {
+        const parsedOrigin = new URL(origin);
+        return parsedOrigin.hostname.endsWith(".vercel.app");
+    } catch {
+        return false;
+    }
+};
 
 void import("apminsight")
     .then(({ default: AgentAPI }) => {
@@ -21,11 +42,18 @@ void import("apminsight")
 
 app.use(
     cors({
-        origin: FRONTEND_URL,
+        origin(origin, callback) {
+            if (!origin || isAllowedOrigin(origin)) {
+                return callback(null, true);
+            }
+
+            return callback(new Error(`Origin not allowed by CORS: ${origin}`));
+        },
         methods: ["GET", "POST", "PUT", "DELETE"],
         credentials: true,
     })
 );
+app.options("*", cors());
 
 app.use(express.json());
 

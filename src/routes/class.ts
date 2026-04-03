@@ -2,7 +2,7 @@ import express from "express";
 import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
-import { classes, enrollments, subjects, user } from "../db/schema/index.js";
+import { classes, departments, enrollments, subjects, user } from "../db/schema/index.js";
 import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
@@ -26,6 +26,64 @@ const parseClassStatus = (value: unknown): ClassStatus | null => {
     }
 
     return null;
+};
+
+const getClassStudents: express.RequestHandler = async (req, res) => {
+    try {
+        const classId = parseNumericId(req.params.id);
+
+        if (!classId) {
+            return res.status(400).json({ error: "Invalid class id" });
+        }
+
+        const { currentPage, limitPerPage, offset } = parsePagination(req);
+
+        const [classRecord] = await db
+            .select({ id: classes.id })
+            .from(classes)
+            .where(eq(classes.id, classId));
+
+        if (!classRecord) {
+            return res.status(404).json({ error: "Class not found" });
+        }
+
+        const countResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(enrollments)
+            .where(eq(enrollments.classId, classId));
+
+        const data = await db
+            .select({
+                enrollmentId: enrollments.id,
+                student: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    role: user.role,
+                    image: user.image,
+                },
+                createdAt: enrollments.createdAt,
+            })
+            .from(enrollments)
+            .leftJoin(user, eq(enrollments.studentId, user.id))
+            .where(eq(enrollments.classId, classId))
+            .orderBy(desc(enrollments.createdAt))
+            .limit(limitPerPage)
+            .offset(offset);
+
+        res.status(200).json({
+            data,
+            pagination: {
+                page: currentPage,
+                limit: limitPerPage,
+                total: countResult[0]?.count ?? 0,
+                totalPages: Math.ceil((countResult[0]?.count ?? 0) / limitPerPage),
+            },
+        });
+    } catch (error) {
+        console.error("GET /classes/:id/students error:", error);
+        res.status(500).json({ error: "Failed to fetch class students" });
+    }
 };
 
 router.get("/", async (req, res) => {
@@ -184,6 +242,7 @@ router.get("/:id", async (req, res) => {
             .select({
                 ...getTableColumns(classes),
                 subject: { ...getTableColumns(subjects) },
+                department: { ...getTableColumns(departments) },
                 teacher: {
                     id: user.id,
                     name: user.name,
@@ -194,6 +253,7 @@ router.get("/:id", async (req, res) => {
             })
             .from(classes)
             .leftJoin(subjects, eq(classes.subjectId, subjects.id))
+            .leftJoin(departments, eq(subjects.departmentId, departments.id))
             .leftJoin(user, eq(classes.teacherId, user.id))
             .where(eq(classes.id, classId));
 
@@ -220,63 +280,8 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-router.get("/:id/students", async (req, res) => {
-    try {
-        const classId = parseNumericId(req.params.id);
-
-        if (!classId) {
-            return res.status(400).json({ error: "Invalid class id" });
-        }
-
-        const { currentPage, limitPerPage, offset } = parsePagination(req);
-
-        const [classRecord] = await db
-            .select({ id: classes.id })
-            .from(classes)
-            .where(eq(classes.id, classId));
-
-        if (!classRecord) {
-            return res.status(404).json({ error: "Class not found" });
-        }
-
-        const countResult = await db
-            .select({ count: sql<number>`count(*)` })
-            .from(enrollments)
-            .where(eq(enrollments.classId, classId));
-
-        const data = await db
-            .select({
-                enrollmentId: enrollments.id,
-                student: {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    role: user.role,
-                    image: user.image,
-                },
-                createdAt: enrollments.createdAt,
-            })
-            .from(enrollments)
-            .leftJoin(user, eq(enrollments.studentId, user.id))
-            .where(eq(enrollments.classId, classId))
-            .orderBy(desc(enrollments.createdAt))
-            .limit(limitPerPage)
-            .offset(offset);
-
-        res.status(200).json({
-            data,
-            pagination: {
-                page: currentPage,
-                limit: limitPerPage,
-                total: countResult[0]?.count ?? 0,
-                totalPages: Math.ceil((countResult[0]?.count ?? 0) / limitPerPage),
-            },
-        });
-    } catch (error) {
-        console.error("GET /classes/:id/students error:", error);
-        res.status(500).json({ error: "Failed to fetch class students" });
-    }
-});
+router.get("/:id/students", getClassStudents);
+router.get("/:id/users", getClassStudents);
 
 router.put("/:id", async (req, res) => {
     try {
