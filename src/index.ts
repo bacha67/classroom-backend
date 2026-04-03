@@ -4,7 +4,7 @@ import departmentRouter from "./routes/department.js";
 import enrollmentRouter from "./routes/enrollment.js";
 import classRouter from "./routes/class.js";
 import subjectRouter from "./routes/subject.js";
-import usersRouter from "./routes/users.js";
+import usersRouter from "./routes/user.js";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 8000);
