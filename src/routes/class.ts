@@ -3,7 +3,7 @@ import { and, desc, eq, getTableColumns, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "../db/index.js";
 import { classes, enrollments, subjects, user } from "../db/schema/index.js";
-import { parseNumericId, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
+import { parseNumericId, parsePagination, toOptionalTrimmedString, toTrimmedString } from "./_shared.js";
 
 const router = express.Router();
 
